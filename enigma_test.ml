@@ -4,6 +4,7 @@ open Enigma
 let identity = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 let swap_ab = "BACDEFGHIJKLMNOPQRSTUVWXYZ"
 let rotor_I = "EKMFLGDQVZNTOWYHXUSPAIBRCJ"
+let rotor_II = "AJDKSIRUXBLHWTMCQGZNPYFVOE"
 let rotor_III = "BDFHJLCPRTXVZNYEIWGAKMUSQO"
 let refl_B = "YRUHQSLDPXNGOKMIEBFZCWVJAT"
 let refl_C = "FVPJIAOYEDRZXWGCTKUQSBNMHL"
@@ -71,7 +72,7 @@ let historical_aaa = {
   refl = refl_B;
   rotors = [
     oriented rotor_I 'Q' 'A';
-    oriented "AJDKSIRUXBLHWTMCQGZNPYFVOE" 'E' 'A';
+    oriented rotor_II 'E' 'A';
     oriented rotor_III 'V' 'A';
   ];
   plugboard = [];
@@ -88,6 +89,40 @@ let cipher_alphabet_test name config expected =
   name >:: fun _ ->
     assert_equal expected (String.map (cipher_char config) alphabet)
       ~printer:Fun.id
+
+(** [tops config] is the top letters of [config]'s rotors, left to right. *)
+let tops config =
+  String.of_seq (List.to_seq (List.map (fun r -> r.top_letter) config.rotors))
+
+(** [machine rotor_specs] is a machine with reflector B, an empty plugboard
+    and one rotor per [(wiring, turnover, top_letter)], left to right. *)
+let machine rotor_specs = {
+  refl = refl_B;
+  rotors = List.map (fun (w, t, top) -> oriented w t top) rotor_specs;
+  plugboard = [];
+}
+
+(** Rotors III-II-I from left to right, as in the stepping examples. *)
+let iii_ii_i top_l top_m top_r =
+  machine [
+    (rotor_III, 'V', top_l);
+    (rotor_II, 'E', top_m);
+    (rotor_I, 'Q', top_r);
+  ]
+
+let step_test name config expected =
+  name >:: fun _ ->
+    assert_equal expected (tops (step config)) ~printer:Fun.id
+
+(** [step_sequence_test name config expected] steps [config] repeatedly and
+    checks that the top letters run through [expected], in order. *)
+let step_sequence_test name config expected =
+  let rec states config n =
+    if n = 0 then [] else tops config :: states (step config) (n - 1)
+  in
+  name >:: fun _ ->
+    assert_equal expected (states config (List.length expected))
+      ~printer:(String.concat " ")
 
 let index_tests = [
   index_test "index of A is 0" 'A' 0;
@@ -170,6 +205,46 @@ let cipher_char_tests = [
     { bare_config with plugboard = az } 'A' 'A';
 ]
 
+let step_tests = [
+  (* Rule 1: the rightmost rotor always steps. *)
+  step_test "no rotors, nothing to step" bare_config "";
+  step_test "one rotor, A -> B" (machine [(rotor_I, 'Q', 'A')]) "B";
+  step_test "one rotor wraps, Z -> A" (machine [(rotor_I, 'Q', 'Z')]) "A";
+  step_test "one rotor at its turnover still steps once"
+    (machine [(rotor_I, 'Q', 'Q')]) "R";
+  step_test "III-II-I, only rightmost steps, AAA -> AAB"
+    (iii_ii_i 'A' 'A' 'A') "AAB";
+  (* Rule 2: a non-leftmost rotor at its turnover steps itself and its
+     left neighbour. *)
+  step_test "rightmost at turnover Q turns middle, AAQ -> ABR"
+    (iii_ii_i 'A' 'A' 'Q') "ABR";
+  step_test "middle at turnover E double-steps, AEA -> BFB"
+    (iii_ii_i 'A' 'E' 'A') "BFB";
+  step_test "leftmost at its turnover V does not step, VAA -> VAB"
+    (iii_ii_i 'V' 'A' 'A') "VAB";
+  (* Rule 3: no rotor steps twice, even when two rules apply to it. *)
+  step_test "middle at turnover and right at turnover, AEQ -> BFR"
+    (iii_ii_i 'A' 'E' 'Q') "BFR";
+  (* Examples from the assignment. *)
+  step_sequence_test "sequence from KDO" (iii_ii_i 'K' 'D' 'O')
+    ["KDO"; "KDP"; "KDQ"; "KER"; "LFS"; "LFT"; "LFU"];
+  step_sequence_test "sequence from VDP" (iii_ii_i 'V' 'D' 'P')
+    ["VDP"; "VDQ"; "VER"; "WFS"; "WFT"];
+  (* step builds a new config and leaves everything else alone. *)
+  "step keeps wiring, reflector and plugboard" >:: (fun _ ->
+    let config = { (iii_ii_i 'K' 'D' 'Q') with plugboard = az } in
+    let stepped = step config in
+    assert_equal config.refl stepped.refl;
+    assert_equal config.plugboard stepped.plugboard;
+    assert_equal
+      (List.map (fun r -> r.rotor) config.rotors)
+      (List.map (fun r -> r.rotor) stepped.rotors));
+  "step does not change the original config" >:: (fun _ ->
+    let config = iii_ii_i 'K' 'D' 'Q' in
+    let _ = step config in
+    assert_equal "KDQ" (tops config) ~printer:Fun.id);
+]
+
 let suite =
   "Enigma test suite" >::: List.flatten [
     index_tests;
@@ -178,6 +253,7 @@ let suite =
     map_refl_tests;
     map_plug_tests;
     cipher_char_tests;
+    step_tests;
   ]
 
 let () = run_test_tt_main suite

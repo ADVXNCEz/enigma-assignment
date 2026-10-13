@@ -81,8 +81,29 @@ let cipher_char config c =
   let pos = map_rotors_l_to_r config.rotors pos in
   map_plug config.plugboard (letter pos)
 
-let step _config =
-  failwith "Unimplemented"
+(** [at_turnover r] is whether [r] is showing its turnover letter. *)
+let at_turnover r =
+  r.top_letter = r.rotor.turnover
+
+(** [advance r] is [r] turned by one position, wrapping from Z to A. *)
+let advance r =
+  { r with top_letter = letter (wrap (index r.top_letter + 1)) }
+
+(** [step_rotors is_leftmost rotors] steps each rotor of [rotors] at most
+    once. A rotor steps when it is the rightmost rotor (rule 1), when it
+    is not the leftmost rotor and shows its turnover letter (rule 2), or
+    when its right neighbour shows its turnover letter (rule 2).
+    [is_leftmost] tells whether the head of [rotors] is the leftmost rotor. *)
+let rec step_rotors is_leftmost rotors =
+  match rotors with
+  | [] -> []
+  | [r] -> [advance r]
+  | r :: (right :: _ as rest) ->
+    let moves = (not is_leftmost && at_turnover r) || at_turnover right in
+    (if moves then advance r else r) :: step_rotors false rest
+
+let step config =
+  { config with rotors = step_rotors true config.rotors }
 
 let cipher _config _s =
   failwith "Unimplemented"
