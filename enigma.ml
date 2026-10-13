@@ -36,8 +36,14 @@ let map_r_to_l wiring top_letter input_pos =
   let contact = to_contact top_letter input_pos in
   to_external top_letter (index wiring.[contact])
 
-let map_l_to_r _wiring _top_letter _input_pos =
-  failwith "Unimplemented"
+(** [letter i] is the uppercase letter at alphabet index [i].
+    Inverse of [index]. Requires: [i] is in [0] through [25]. *)
+let letter i =
+  Char.chr (i + Char.code 'A')
+
+let map_l_to_r wiring top_letter input_pos =
+  let contact = to_contact top_letter input_pos in
+  to_external top_letter (String.index wiring (letter contact))
 
 let map_refl _wiring _input_pos =
   failwith "Unimplemented"
