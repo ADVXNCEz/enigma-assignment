@@ -123,4 +123,4 @@ let cipher config s =
   |> cipher_chars config
   |> List.to_seq |> String.of_seq
 
-let hours_worked = 0
+let hours_worked = 6
