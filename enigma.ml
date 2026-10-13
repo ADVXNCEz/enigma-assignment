@@ -75,11 +75,14 @@ let rec map_rotors_l_to_r rotors pos =
     map_rotors_l_to_r rest (map_l_to_r r.rotor.wiring r.top_letter pos)
 
 let cipher_char config c =
-  let pos = index (map_plug config.plugboard c) in
-  let pos = map_rotors_r_to_l config.rotors pos in
-  let pos = map_refl config.refl pos in
-  let pos = map_rotors_l_to_r config.rotors pos in
-  map_plug config.plugboard (letter pos)
+  c
+  |> map_plug config.plugboard
+  |> index
+  |> map_rotors_r_to_l config.rotors
+  |> map_refl config.refl
+  |> map_rotors_l_to_r config.rotors
+  |> letter
+  |> map_plug config.plugboard
 
 (** [at_turnover r] is whether [r] is showing its turnover letter. *)
 let at_turnover r =
