@@ -17,8 +17,24 @@ type config = {
 let index c =
   Char.code c - Char.code 'A'
 
-let map_r_to_l _wiring _top_letter _input_pos =
-  failwith "Unimplemented"
+(** [wrap n] is [n] reduced into the range [0] through [25].
+    Unlike [n mod 26], it is never negative. *)
+let wrap n =
+  ((n mod 26) + 26) mod 26
+
+(** [to_contact top_letter pos] is the rotor contact touched by external
+    position [pos] when the rotor shows [top_letter]. *)
+let to_contact top_letter pos =
+  wrap (pos + index top_letter)
+
+(** [to_external top_letter contact] is the external position reached
+    from rotor contact [contact] when the rotor shows [top_letter]. *)
+let to_external top_letter contact =
+  wrap (contact - index top_letter)
+
+let map_r_to_l wiring top_letter input_pos =
+  let contact = to_contact top_letter input_pos in
+  to_external top_letter (index wiring.[contact])
 
 let map_l_to_r _wiring _top_letter _input_pos =
   failwith "Unimplemented"
