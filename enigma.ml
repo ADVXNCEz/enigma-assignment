@@ -45,8 +45,9 @@ let map_l_to_r wiring top_letter input_pos =
   let contact = to_contact top_letter input_pos in
   to_external top_letter (String.index wiring (letter contact))
 
-let map_refl _wiring _input_pos =
-  failwith "Unimplemented"
+(* A reflector is a rotor that never turns, so it always shows 'A'. *)
+let map_refl wiring input_pos =
+  map_r_to_l wiring 'A' input_pos
 
 let map_plug _plugs _c =
   failwith "Unimplemented"
