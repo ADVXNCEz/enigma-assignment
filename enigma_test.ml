@@ -48,6 +48,15 @@ let refl_symmetry_test name wiring =
           ~printer:string_of_int)
       (List.init 26 Fun.id)
 
+let map_plug_test name plugs input expected =
+  name >:: fun _ ->
+    assert_equal expected (map_plug plugs input)
+      ~printer:(String.make 1)
+
+let az = [('A', 'Z')]
+let az_xy = [('A', 'Z'); ('X', 'Y')]
+let yx_za = [('Y', 'X'); ('Z', 'A')]
+
 let index_tests = [
   index_test "index of A is 0" 'A' 0;
   index_test "index of Z is 25" 'Z' 25;
@@ -97,12 +106,28 @@ let map_refl_tests = [
   refl_symmetry_test "reflector C is symmetric" refl_C;
 ]
 
+let map_plug_tests = [
+  map_plug_test "empty plugboard, A -> A" [] 'A' 'A';
+  map_plug_test "empty plugboard, Q -> Q" [] 'Q' 'Q';
+  map_plug_test "A-Z, A -> Z" az 'A' 'Z';
+  map_plug_test "A-Z, Z -> A" az 'Z' 'A';
+  map_plug_test "A-Z, unplugged B -> B" az 'B' 'B';
+  map_plug_test "A-Z X-Y, A -> Z" az_xy 'A' 'Z';
+  map_plug_test "A-Z X-Y, Z -> A" az_xy 'Z' 'A';
+  map_plug_test "A-Z X-Y, X -> Y" az_xy 'X' 'Y';
+  map_plug_test "A-Z X-Y, Y -> X" az_xy 'Y' 'X';
+  map_plug_test "A-Z X-Y, unplugged M -> M" az_xy 'M' 'M';
+  map_plug_test "reordered Y-X Z-A, A -> Z" yx_za 'A' 'Z';
+  map_plug_test "reordered Y-X Z-A, X -> Y" yx_za 'X' 'Y';
+]
+
 let suite =
   "Enigma test suite" >::: List.flatten [
     index_tests;
     map_r_to_l_tests;
     map_l_to_r_tests;
     map_refl_tests;
+    map_plug_tests;
   ]
 
 let () = run_test_tt_main suite
