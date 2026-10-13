@@ -57,6 +57,38 @@ let az = [('A', 'Z')]
 let az_xy = [('A', 'Z'); ('X', 'Y')]
 let yx_za = [('Y', 'X'); ('Z', 'A')]
 
+let alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+(** [oriented wiring turnover top_letter] is a rotor showing [top_letter]. *)
+let oriented wiring turnover top_letter =
+  { rotor = { wiring; turnover }; top_letter }
+
+(** No rotors, identity reflector, empty plugboard. *)
+let bare_config = { refl = identity; rotors = []; plugboard = [] }
+
+(** Reflector B, rotors I-II-III at AAA, empty plugboard. *)
+let historical_aaa = {
+  refl = refl_B;
+  rotors = [
+    oriented rotor_I 'Q' 'A';
+    oriented "AJDKSIRUXBLHWTMCQGZNPYFVOE" 'E' 'A';
+    oriented rotor_III 'V' 'A';
+  ];
+  plugboard = [];
+}
+
+let cipher_char_test name config input expected =
+  name >:: fun _ ->
+    assert_equal expected (cipher_char config input)
+      ~printer:(String.make 1)
+
+(** [cipher_alphabet_test name config expected] checks [cipher_char] on
+    every letter A-Z against the matching letter of [expected]. *)
+let cipher_alphabet_test name config expected =
+  name >:: fun _ ->
+    assert_equal expected (String.map (cipher_char config) alphabet)
+      ~printer:Fun.id
+
 let index_tests = [
   index_test "index of A is 0" 'A' 0;
   index_test "index of Z is 25" 'Z' 25;
@@ -121,6 +153,23 @@ let map_plug_tests = [
   map_plug_test "reordered Y-X Z-A, X -> Y" yx_za 'X' 'Y';
 ]
 
+let cipher_char_tests = [
+  cipher_char_test "bare machine, A -> A" bare_config 'A' 'A';
+  cipher_char_test "bare machine, Z -> Z" bare_config 'Z' 'Z';
+  cipher_alphabet_test "bare machine is identity" bare_config alphabet;
+  cipher_char_test "historical AAA, G -> P" historical_aaa 'G' 'P';
+  cipher_char_test "historical AAA, P -> G" historical_aaa 'P' 'G';
+  cipher_char_test "historical AAA, A -> U" historical_aaa 'A' 'U';
+  cipher_alphabet_test "historical AAA, whole alphabet" historical_aaa
+    "UEJOBTPZWCNSRKDGVMLFAQIYXH";
+  cipher_char_test "historical AAA + A-Z plug, A -> H"
+    { historical_aaa with plugboard = az } 'A' 'H';
+  cipher_char_test "historical AAA + A-Z plug, U -> Z"
+    { historical_aaa with plugboard = az } 'U' 'Z';
+  cipher_char_test "bare machine + A-Z plug, A -> A"
+    { bare_config with plugboard = az } 'A' 'A';
+]
+
 let suite =
   "Enigma test suite" >::: List.flatten [
     index_tests;
@@ -128,6 +177,7 @@ let suite =
     map_l_to_r_tests;
     map_refl_tests;
     map_plug_tests;
+    cipher_char_tests;
   ]
 
 let () = run_test_tt_main suite

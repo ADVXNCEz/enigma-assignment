@@ -56,8 +56,30 @@ let rec map_plug plugs c =
   | (a, b) :: _ when b = c -> a
   | _ :: rest -> map_plug rest c
 
-let cipher_char _config _c =
-  failwith "Unimplemented"
+(** [map_rotors_r_to_l rotors pos] passes [pos] right to left through
+    [rotors], which are listed left to right. The rightmost rotor is
+    applied first, so the recursive call runs before the head rotor. *)
+let rec map_rotors_r_to_l rotors pos =
+  match rotors with
+  | [] -> pos
+  | r :: rest ->
+    map_r_to_l r.rotor.wiring r.top_letter (map_rotors_r_to_l rest pos)
+
+(** [map_rotors_l_to_r rotors pos] passes [pos] left to right through
+    [rotors], which are listed left to right. The leftmost rotor is
+    applied first, so the head rotor runs before the recursive call. *)
+let rec map_rotors_l_to_r rotors pos =
+  match rotors with
+  | [] -> pos
+  | r :: rest ->
+    map_rotors_l_to_r rest (map_l_to_r r.rotor.wiring r.top_letter pos)
+
+let cipher_char config c =
+  let pos = index (map_plug config.plugboard c) in
+  let pos = map_rotors_r_to_l config.rotors pos in
+  let pos = map_refl config.refl pos in
+  let pos = map_rotors_l_to_r config.rotors pos in
+  map_plug config.plugboard (letter pos)
 
 let step _config =
   failwith "Unimplemented"
