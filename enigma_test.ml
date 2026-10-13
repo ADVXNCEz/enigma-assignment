@@ -124,6 +124,29 @@ let step_sequence_test name config expected =
     assert_equal expected (states config (List.length expected))
       ~printer:(String.concat " ")
 
+let cipher_test name config input expected =
+  name >:: fun _ ->
+    assert_equal expected (cipher config input) ~printer:Fun.id
+
+(** [cipher_round_trip_test name config plaintext] checks that enciphering
+    the ciphertext again from the same initial [config] gives back
+    [plaintext]. *)
+let cipher_round_trip_test name config plaintext =
+  name >:: fun _ ->
+    assert_equal plaintext (cipher config (cipher config plaintext))
+      ~printer:Fun.id
+
+(** Reflector B, rotors I-II-III at FUN, plugboard A-Z. *)
+let fun_config = {
+  refl = refl_B;
+  rotors = [
+    oriented rotor_I 'Q' 'F';
+    oriented rotor_II 'E' 'U';
+    oriented rotor_III 'V' 'N';
+  ];
+  plugboard = az;
+}
+
 let index_tests = [
   index_test "index of A is 0" 'A' 0;
   index_test "index of Z is 25" 'Z' 25;
@@ -245,6 +268,24 @@ let step_tests = [
     assert_equal "KDQ" (tops config) ~printer:Fun.id);
 ]
 
+let cipher_tests = [
+  cipher_test "empty message stays empty" historical_aaa "" "";
+  cipher_test "bare machine leaves HELLO unchanged" bare_config
+    "HELLO" "HELLO";
+  cipher_test "steps before the first letter, AAA enciphers A as B"
+    historical_aaa "A" "B";
+  cipher_test "repeated letter changes as rotors step, AAAAA -> BDZGO"
+    historical_aaa "AAAAA" "BDZGO";
+  cipher_test "assignment example, FUN with A-Z plug, YNGXQ -> OCAML"
+    fun_config "YNGXQ" "OCAML";
+  cipher_round_trip_test "AAA deciphers its own HELLO" historical_aaa
+    "HELLO";
+  cipher_round_trip_test "FUN deciphers its own message across turnovers"
+    fun_config "FUNCTIONALPROGRAMMINGWITHOCAML";
+  cipher_round_trip_test "KDO with A-Z X-Y plugs deciphers double steps"
+    { (iii_ii_i 'K' 'D' 'O') with plugboard = az_xy } "ENIGMAMACHINE";
+]
+
 let suite =
   "Enigma test suite" >::: List.flatten [
     index_tests;
@@ -254,6 +295,7 @@ let suite =
     map_plug_tests;
     cipher_char_tests;
     step_tests;
+    cipher_tests;
   ]
 
 let () = run_test_tt_main suite
